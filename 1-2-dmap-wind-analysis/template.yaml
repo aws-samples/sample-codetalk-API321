@@ -91,7 +91,8 @@ Resources:
       PrimaryKey:
         Name: pk
         Type: String
-
+                
+  
   WindSpeedStateMachineRole:
     Type: AWS::IAM::Role
     Properties:
@@ -135,7 +136,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - states:StartExecution
-                Resource: !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${DemoNumber}-windspeed-statemachine"
+                Resource: 
+                  - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${DemoNumber}-windspeed-statemachine"
+                  - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:${DemoNumber}-windspeed-longwait-statemachine"       
         - PolicyName: InvokeMapperReducerPolicy
           PolicyDocument:
             Version: "2012-10-17"
@@ -179,7 +182,7 @@ Resources:
           RESULTS_BUCKET_NAME: !Ref ResultsBucket
           RESULTS_DYNAMODB_TABLE_NAME: !Ref ResultsDynamoDBTable
       Policies:
-        - S3ReadPolicy:
+        - S3CrudPolicy:
             BucketName: !Ref ResultsBucket
         - DynamoDBWritePolicy:
             TableName: !Ref ResultsDynamoDBTable
@@ -210,7 +213,7 @@ Resources:
     Type: AWS::Serverless::StateMachine
     Properties:
       Name: !Sub ${DemoNumber}-windspeed-longwait-statemachine
-      DefinitionUri: statemachines/dmap-windspeed.asl.json
+      DefinitionUri: statemachines/windspeed-longwait.asl.json
       DefinitionSubstitutions:
         DistributedMapTestFunctionName: !GetAtt WindSpeedFunction.Arn
         ConvertWindSpeedFunctionName: !GetAtt ConvertWindSpeedFunction.Arn
@@ -278,6 +281,111 @@ Resources:
         TransformFunction: !GetAtt DeleteS3ObjectTransformFunction.Arn
       Role: !GetAtt DeleteS3DataApplicationRole.Arn
 
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: scheduler.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StartStepFunctionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Ref NOAAWindSpeedStateMachine
+
+  WindSpeedSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: !Sub "${DemoNumber}-windspeed-schedule"
+      Description: "Triggers NOAAWindSpeedStateMachine every 5 minutes"
+      ScheduleExpression: "rate(5 minutes)"
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      Target:
+        Arn: !Ref NOAAWindSpeedStateMachine
+        RoleArn: !GetAtt SchedulerRole.Arn
+        Input: '{}'
+
+  NOAAWindSpeedDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${DemoNumber}-windspeed-dashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 7,
+              "properties": {
+                "metrics": [
+                  [ "AWS/States", "ExecutionsSucceeded", "StateMachineArn", "${NOAAWindSpeedStateMachine}" ],
+                  [ ".", "ExecutionThrottled", ".", "." ],
+                  [ ".", "ExecutionsStarted", ".", "." ],
+                  [ ".", "ExecutionTime", ".", ".", { "stat": "Average" } ]
+                ],
+                "view": "singleValue",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "period": 60,
+                "stat": "Sum",
+                "title": "State Machine Execution Metrics"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 7,
+              "properties": {
+                "metrics": [
+                  [ "AWS/States", "ApproximateOpenMapRunCount", { "region": "${AWS::Region}" } ],
+                  [ ".", "OpenMapRunLimit", { "region": "${AWS::Region}" } ],
+                  [ ".", "ApproximateMapRunBacklogSize", { "region": "${AWS::Region}" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "stat": "Maximum",
+                "period": 60,
+                "title": "Map Run Metrics"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 7,
+              "width": 24,
+              "height": 7,
+              "properties": {
+                "metrics": [
+                  [ "AWS/States", "ProvisionedBucketSize", "ServiceMetric", "StateTransition", { "region": "${AWS::Region}" } ],
+                  [ ".", "ProvisionedRefillRate", ".", ".", { "region": "${AWS::Region}" } ],
+                  [ ".", "ConsumedCapacity", ".", ".", { "region": "${AWS::Region}", "stat": "Sum" } ],
+                  [ ".", "ThrottledEvents", ".", ".", { "region": "${AWS::Region}", "stat": "Sum" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "stat": "Maximum",
+                "period": 60,
+                "title": "State Transition Quota Metrics"
+              }
+            }
+          ]
+        }
+
 Outputs:
   StateMachineLogGroupName:
     Description: CloudWatch log group name for the distirbuted map state machine
@@ -291,3 +399,6 @@ Outputs:
   StateMachineResultsBucket:
     Description: Bucket where the distributed map run will write results
     Value: !Ref ResultsBucket
+  DashboardName:
+    Description: CloudWatch dashboard for monitoring Step Functions metrics
+    Value: !Ref NOAAWindSpeedDashboard
