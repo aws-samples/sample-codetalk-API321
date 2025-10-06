@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: re:Invent Demo 3 to replicate state transition throttling
+
+Parameters:
+  DemoNumber:
+    Type: String
+    Description: Provide a demo number
+    Default: demo3
+
+Resources:
+  STPSStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+              Ref: AWS::AccountId
+            Service:
+            - states.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/AWSXrayFullAccess
+      Policies:
+      - PolicyName: EventsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - events:PutRule
+            - events:DeleteRule
+            - events:PutTargets
+            - events:RemoveTargets
+            Resource: '*'
+  
+  LoadTestStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS:
+              Ref: AWS::AccountId
+            Service:
+            - states.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/AWSXrayFullAccess
+      Policies:
+      - PolicyName: GetObjectPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - S3:GetObject
+            Resource:
+            - arn:aws:s3:::csv-processing-bucket-1757274740-deployment/6000.csv
+      - PolicyName: RedriveExecutionScopedPolicyForMapRun
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - states:RedriveExecution
+            Resource:
+            - Fn::Sub: arn:aws:states:${AWS::Region}:${AWS::AccountId}:execution:load-test-sm/load:*
+      - PolicyName: ExecutionPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - states:StartExecution
+            - states:DescribeExecution
+            - states:StopExecution
+            Resource:
+            - Fn::Sub: arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:replicate-state-transition-throttles
+            - Fn::Sub: arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:load-test-sm
+      - PolicyName: EventsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - events:PutRule
+            - events:DeleteRule
+            - events:PutTargets
+            - events:RemoveTargets
+            Resource: '*'
+  
+  STPSStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${DemoNumber}-state-transitions
+      DefinitionUri: statemachines/state-transitions.asl.json
+      Role:
+        Fn::GetAtt:
+        - STPSStateMachineRole
+        - Arn
+  
+  LoadTestStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${DemoNumber}-loadtest-statemachine
+      DefinitionUri: statemachines/dmap-windspeed.asl.json
+      Role:
+        Fn::GetAtt:
+        - LoadTestStateMachineRole
+        - Arn
+
+Outputs:
+  STPSSStepFunction:
+    Description: State machine that replicate State Transitions
+    Value:
+      Ref: STPSStateMachine

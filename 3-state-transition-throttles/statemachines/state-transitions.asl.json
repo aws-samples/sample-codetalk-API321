@@ -1,0 +1,145 @@
+{
+  "Comment": "State Machine to replicate state transition throttling",
+  "StartAt": "Pass",
+  "States": {
+    "Pass": {
+      "Type": "Pass",
+      "Next": "Parallel",
+      "Output": {
+        "numberOfIterationRemaining": 10
+      }
+    },
+    "Parallel": {
+      "Type": "Parallel",
+      "End": true,
+      "Branches": [
+        {
+          "StartAt": "Choice to create for loop behavior 1",
+          "States": {
+            "Choice to create for loop behavior 1": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "Success 1",
+                  "Condition": "{% ($states.input.numberOfIterationRemaining) = (0) %}"
+                }
+              ],
+              "Default": "Pass 1"
+            },
+            "Pass 1": {
+              "Type": "Pass",
+              "Next": "Choice to create for loop behavior 1",
+              "Output": {
+                "numberOfIterationRemaining": "{%  $states.input.numberOfIterationRemaining - 1 %}"
+              }
+            },
+            "Success 1": {
+              "Type": "Succeed"
+            }
+          }
+        },
+        {
+          "StartAt": "Choice to create for loop behavior 2",
+          "States": {
+            "Choice to create for loop behavior 2": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "Success 2",
+                  "Condition": "{% ($states.input.numberOfIterationRemaining) = (0) %}"
+                }
+              ],
+              "Default": "Pass 2"
+            },
+            "Pass 2": {
+              "Type": "Pass",
+              "Next": "Choice to create for loop behavior 2",
+              "Output": {
+                "numberOfIterationRemaining": "{%  $states.input.numberOfIterationRemaining - 1 %}"
+              }
+            },
+            "Success 2": {
+              "Type": "Succeed"
+            }
+          }
+        },
+        {
+          "StartAt": "Choice to create for loop behavior 3",
+          "States": {
+            "Choice to create for loop behavior 3": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "Success 3",
+                  "Condition": "{% ($states.input.numberOfIterationRemaining) = (0) %}"
+                }
+              ],
+              "Default": "Pass 3"
+            },
+            "Pass 3": {
+              "Type": "Pass",
+              "Next": "Choice to create for loop behavior 3",
+              "Output": {
+                "numberOfIterationRemaining": "{%  $states.input.numberOfIterationRemaining - 1 %}"
+              }
+            },
+            "Success 3": {
+              "Type": "Succeed"
+            }
+          }
+        },
+        {
+          "StartAt": "Choice to create for loop behavior 4",
+          "States": {
+            "Choice to create for loop behavior 4": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "Success 4",
+                  "Condition": "{% ($states.input.numberOfIterationRemaining) = (0) %}"
+                }
+              ],
+              "Default": "Pass 4"
+            },
+            "Pass 4": {
+              "Type": "Pass",
+              "Next": "Choice to create for loop behavior 4",
+              "Output": {
+                "numberOfIterationRemaining": "{%  $states.input.numberOfIterationRemaining - 1 %}"
+              }
+            },
+            "Success 4": {
+              "Type": "Succeed"
+            }
+          }
+        },
+        {
+          "StartAt": "Choice to create for loop behavior 5",
+          "States": {
+            "Choice to create for loop behavior 5": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Next": "Success 5",
+                  "Condition": "{% ($states.input.numberOfIterationRemaining) = (0) %}"
+                }
+              ],
+              "Default": "Pass 5"
+            },
+            "Pass 5": {
+              "Type": "Pass",
+              "Next": "Choice to create for loop behavior 5",
+              "Output": {
+                "numberOfIterationRemaining": "{%  $states.input.numberOfIterationRemaining - 1 %}"
+              }
+            },
+            "Success 5": {
+              "Type": "Succeed"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "QueryLanguage": "JSONata"
+}
