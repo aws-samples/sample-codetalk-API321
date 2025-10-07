@@ -1,0 +1,96 @@
+{
+    "Comment": "Workflow for processing data with Bedrock and classifying reviews",
+    "StartAt": "InvokeBedrockAPI",
+    "States": {
+        "InvokeBedrockAPI": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::bedrock:invokeModel",
+            "Parameters": {
+                "ModelId": "amazon.nova-micro-v1:0",
+                "ContentType": "application/json",
+                "Body": {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "text.$": "$.StatePayload.reviewText"
+                                }
+                            ]
+                        }
+                    ],
+                    "inferenceConfig": {
+                        "max_new_tokens": 300,
+                        "top_p": 0.9,
+                        "top_k": 20,
+                        "temperature": 1
+                    },
+                    "system": [
+                        {
+                            "text": "Act as a reviewer. When the user provides you with a reviewText, please analyze and provide a single word answer - fake or real"
+                        }
+                    ]
+                }
+            },
+            "Next": "ClassifyReview"
+        },
+        "ClassifyReview": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.Body.output.message.content[0].text",
+                    "StringMatches": "*fake*",
+                    "Next": "PublishToEventBridge"
+                },
+                {
+                    "Variable": "$.Body.output.message.content[0].text",
+                    "StringMatches": "*real*",
+                    "Next": "CallHTTPEndpoint"
+                }
+            ],
+            "Default": "CallHTTPEndpoint"
+        },
+        "PublishToEventBridge": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::events:putEvents",
+            "Parameters": {
+                "Entries": [
+                    {
+                        "Source": "review.analyzer",
+                        "DetailType": "Fake Review findings",
+                        "Detail": {
+                            "originalInput.$": "$$.Execution.Input",
+                            "analysis.$": "$.Body.output.message.content[0].text"
+                        },
+                        "EventBusName": "review-analyzer-bus"
+                    }
+                ]
+            },
+            "End": true
+        },
+        "CallHTTPEndpoint": {
+            "QueryLanguage": "JSONata",
+            "Type": "Task",
+            "Resource": "arn:aws:states:::http:invoke",
+            "Arguments": {
+                "ApiEndpoint": "https://ecs.puthran.uk",
+                "Method": "GET",
+                "InvocationConfig": {
+                    "ConnectionArn": "arn:aws:events:us-east-1:963887453151:connection/Connection07624BCD-KStk3lOZeV6E/cf5b2c45-8114-464a-96d5-432a01e2f949"
+                }
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "BackoffRate": 2,
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "JitterStrategy": "FULL"
+                }
+            ],
+            "End": true
+        }
+    }
+}

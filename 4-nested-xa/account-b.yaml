@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: re:Invent Demo 4 - nested cross account (Account B)
+
+Parameters:
+  DemoNumber:
+    Type: String
+    Description: Provide a demo number
+    Default: demo4
+  AccountANumber:
+    Type: String
+    Description: Account A number for cross-account access
+    Default: "372707623367"
+  AccountBNumber:
+    Type: String
+    Description: Account B number for state machine resources
+    Default: "963887453151"
+
+Resources:
+  ChildStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AccountANumber}:role/sfn-parent-role"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Sub "arn:aws:states:us-east-1:${AccountANumber}:stateMachine:${DemoNumber}-parent-statemachine"
+      Policies:
+        - PolicyName: StepFunctionsExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "states:StartExecution"
+                Resource:
+                  - !Sub "arn:aws:states:us-east-1:${AccountBNumber}:stateMachine:nested-process-review*"
+
+  ChildStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${DemoNumber}-nested-process-review
+      DefinitionUri: statemachines/account-b-statemachine.asl.json
+      Role: !GetAtt ChildStateMachineRole.Arn

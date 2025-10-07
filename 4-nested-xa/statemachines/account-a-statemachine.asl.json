@@ -1,0 +1,22 @@
+{
+  "Comment": "State Machine in Account A",
+  "StartAt": "Step Functions StartExecution",
+  "States": {
+    "Step Functions StartExecution": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::states:startExecution.sync",
+      "End": true,
+      "Arguments": {
+        "StateMachineArn": "${ChildStateMachineArn}",
+        "Input": {
+          "StatePayload": "{%$states.input %}",
+          "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID": "{% $states.context.Execution.Id %}"
+        }
+      },
+      "Credentials": {
+        "RoleArn": "${AccountBRole}"
+      }
+    }
+  },
+  "QueryLanguage": "JSONata"
+}

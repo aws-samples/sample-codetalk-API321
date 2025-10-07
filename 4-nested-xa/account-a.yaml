@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: re:Invent Demo 4 - nested cross account (Account A)
+
+Parameters:
+  DemoNumber:
+    Type: String
+    Description: Provide a demo number
+    Default: demo4
+  ChildStateMachineArn:
+    Type: String
+    Description: Child State Machine Arn
+  AccountBRole:
+    Type: String
+    Description: Account B's State Machine Execution RoleArn
+
+Resources:
+    ParentStateMachineRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: states.us-east-1.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/CloudWatchFullAccess
+          - arn:aws:iam::aws:policy/AWSXrayFullAccess
+        Policies:  
+        - PolicyName: EventsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - events:PutRule
+              - events:DeleteRule
+              - events:PutTargets
+              - events:RemoveTargets
+              Resource: '*'
+        - PolicyName: ExecutionPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+                - states:StartSyncExecution
+                - states:StopExecution
+              Resource:
+                - !Sub "arn:aws:states:us-east-1:${AWS::AccountId}:stateMachine:account-a-${DemoNumber}-parent-statemachine"
+        - PolicyName: AssumeAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+                - sts:AssumeRole
+              Resource:
+                - !Sub "arn:aws:iam::${account-b}:role/${account-b-role}"                      
+
+    ParentStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub ${DemoNumber}-parent-statemachine
+      DefinitionUri: statemachines/account-a-statemachine.asl.json
+      DefinitionSubstitutions:
+        ChildStateMachineArn: !Ref ChildStateMachineArn
+        AccountBRole: !Ref AccountBRole
+      Role: !GetAtt ParentStateMachineRole.Arn
