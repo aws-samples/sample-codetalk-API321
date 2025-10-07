@@ -43,6 +43,31 @@ This repository contains AWS Step Functions demonstrations showcasing distribute
 - Uses JSONata query language for conditional logic
 - Designed to trigger state transition throttling limits
 
+### Demo 4: Nested Cross-Account Execution (`4-nested-xa/`)
+
+**Purpose**: Demonstrates cross-account Step Functions execution with nested workflows for review analysis.
+
+**Architecture Components**:
+- **Account A**: Parent state machine that initiates cross-account execution
+- **Account B**: Child state machine that processes review data using Amazon Bedrock
+- **Cross-Account IAM**: Role-based access with external ID validation
+- **AI Integration**: Amazon Nova Micro model for review classification
+
+**Workflow**:
+1. **Parent State Machine (Account A)**: Starts synchronous execution of child state machine in Account B
+2. **Child State Machine (Account B)**:
+   - **InvokeBedrockAPI**: Analyzes review text using Amazon Nova Micro model
+   - **ClassifyReview**: Routes based on "fake" or "real" classification
+   - **PublishToEventBridge**: Sends fake review alerts to EventBridge
+   - **CallHTTPEndpoint**: Makes HTTP call for real reviews with retry logic
+
+**Key Features**:
+- Cross-account execution with secure role assumption
+- AI-powered review classification
+- Conditional routing based on AI analysis
+- EventBridge integration for alerting
+- HTTP endpoint integration with retry patterns
+
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
@@ -76,6 +101,18 @@ cd 3-state-transition-throttles/
 # Build and deploy
 sam build
 sam deploy --guided
+```
+
+### Demo 4: Nested Cross-Account Execution
+
+```bash
+cd 4-nested-xa/
+
+# Deploy to Account B first
+sam deploy -t account-b.yaml --guided
+
+# Deploy to Account A (requires Account B state machine ARN)
+sam deploy -t account-a.yaml --guided
 ```
 
 ## Execution Instructions
@@ -121,6 +158,23 @@ aws stepfunctions start-execution \
 - Monitor CloudWatch metrics for throttling events
 - Execution may experience delays due to throttling limits
 
+### Demo 4: Cross-Account Review Analysis Execution
+
+```bash
+aws stepfunctions start-execution \
+  --state-machine-arn arn:aws:states:REGION:ACCOUNT-A:stateMachine:demo4-parent-statemachine \
+  --input '{"asin": "232423","helpful": [0,0],"overall": 5,"reviewText": "I enjoy vintage books and movies so I enjoyed reading this book. The plot was unusual. Don't think killing someone in self-defense but leaving the scene and the body without notifying the police or hitting someone in the jaw to knock them out would wash today. Still it was a good read for me.","reviewTime": "05 5, 2014","reviewerID": "A1F6404F1VG29J","reviewerName": "Avidreader", "summary": "Nice vintage story","unixReviewTime": 1399248000}'
+```
+
+
+
+**Expected Behavior**:
+- Parent state machine in Account A calls child state machine in Account B
+- Bedrock analyzes review text and classifies as fake or real
+- Fake reviews trigger EventBridge notifications
+- Real reviews make HTTP endpoint calls
+- Cross-account execution completes synchronously
+
 
 ## Cleanup
 
@@ -132,6 +186,10 @@ sam delete --stack-name sam-app
 
 # Delete Demo 3  
 sam delete --stack-name sam-app
+
+# Delete Demo 4
+sam delete --stack-name sam-app  # Account A
+sam delete --stack-name sam-app  # Account B
 ```
 
 **Note**: Manually delete S3 buckets if they contain data, as CloudFormation cannot delete non-empty buckets.
