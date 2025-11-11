@@ -1,10 +1,10 @@
-# AWS Step Functions Demo Project
+# re:Invent Code Talk Demo - API321 Solving the Observability Mystery with AWS Step Functions
 
-This repository contains AWS Step Functions demonstrations showcasing distributed map processing and state transition throttling patterns.
+This repository contains AWS Step Functions demos showcasing distributed map processing, state transition throttling and cross account invocations. Please note the sample provided here is for the purpose of demo and not for production use.
 
 ## Architecture Overview
 
-### Demo 1: Distributed Map Wind Analysis (`1-dmap-wind-analysis/`)
+### Demo 1: Distributed Map Wind Analysis (`1-2-dmap-wind-analysis/`)
 
 **Purpose**: Analyzes NOAA weather data to find weather stations with highest average wind speeds by month using distributed map processing.
 
@@ -29,6 +29,10 @@ This repository contains AWS Step Functions demonstrations showcasing distribute
 - 5% tolerated failure rate
 - Batch processing (500 items per batch)
 - Express execution mode for performance
+
+### Demo 2: Open Map Run - Distributed Map Wind Analysis (`1-2-dmap-wind-analysis/`)
+
+**Purpose**: We are using previous example of NOAA weather data to find weather stations with highest average wind speeds by month using distributed map processing but now it uses a long wait state (reference to windspeed-longwait.asl.json)
 
 ### Demo 3: State Transition Throttles (`3-state-transition-throttles/`)
 
@@ -109,10 +113,10 @@ sam deploy --guided
 cd 4-nested-xa/
 
 # Deploy to Account B first
-sam deploy -t account-b.yaml --guided
-
 # Deploy to Account A (requires Account B state machine ARN)
 sam deploy -t account-a.yaml --guided
+
+sam deploy -t account-b.yaml --guided
 ```
 
 ## Execution Instructions
@@ -166,6 +170,22 @@ aws stepfunctions start-execution \
   --input '{"asin": "232423","helpful": [0,0],"overall": 5,"reviewText": "I enjoy vintage books and movies so I enjoyed reading this book. The plot was unusual. Don't think killing someone in self-defense but leaving the scene and the body without notifying the police or hitting someone in the jaw to knock them out would wash today. Still it was a good read for me.","reviewTime": "05 5, 2014","reviewerID": "A1F6404F1VG29J","reviewerName": "Avidreader", "summary": "Nice vintage story","unixReviewTime": 1399248000}'
 ```
 
+```
+{
+  "asin": "213123",
+  "helpful": [
+    0,
+    0
+  ],
+  "overall": 5,
+  "reviewText": "I enjoy vintage books and movies so I enjoyed reading this book. The plot was unusual. Don't think killing someone in self-defense but leaving the scene and the body without notifying the police or hitting someone in the jaw to knock them out would wash today. Still it was a good read for me.",
+  "reviewTime": "05 5, 2014",
+  "reviewerID": "A1F6404F1VG29J",
+  "reviewerName": "Avidreader",
+  "summary": "Nice vintage story",
+  "unixReviewTime": 1399248000
+}
+```
 
 
 **Expected Behavior**:
@@ -193,3 +213,5 @@ sam delete --stack-name sam-app  # Account B
 ```
 
 **Note**: Manually delete S3 buckets if they contain data, as CloudFormation cannot delete non-empty buckets.
+
+This project is licensed under the MIT-0 License. See the LICENSE file for details.

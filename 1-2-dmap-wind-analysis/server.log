@@ -1,0 +1,8 @@
+[36mDEBUG [runtimes-page-parser.js:12:bootstrap] >[39m
+[36mDEBUG [runtimes-page-parser.js:27:getLambdaRuntimesHtml] retrieving from https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html[39m
+[32mINFO [index.js:4:] starting...[39m
+[36mDEBUG [runtimes-page-parser.js:36:getLambdaRuntimesHtml] retrieved successfully html.length=61114[39m
+[36mDEBUG [runtimes-page-parser.js:41:parseLambdaRuntimesHtml] parsing html.length=61114][39m
+[36mDEBUG [runtimes-page-parser.js:48:parseLambdaRuntimesHtml] parsed successfully[39m
+[36mDEBUG [runtimes-page-parser.js:50:parseLambdaRuntimesHtml] processing tables[39m
+[36mDEBUG [runtimes-page-parser.js:53:parseLambdaRuntimesHtml] success, found 18 runtimes with deprecation dates[39m

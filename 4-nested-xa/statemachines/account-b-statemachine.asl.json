@@ -40,56 +40,22 @@
                 {
                     "Variable": "$.Body.output.message.content[0].text",
                     "StringMatches": "*fake*",
-                    "Next": "PublishToEventBridge"
+                    "Next": "No action required"
                 },
                 {
                     "Variable": "$.Body.output.message.content[0].text",
                     "StringMatches": "*real*",
-                    "Next": "CallHTTPEndpoint"
+                    "Next": "Process further"
                 }
             ],
-            "Default": "CallHTTPEndpoint"
+            "Default": "Process further"
         },
-        "PublishToEventBridge": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::events:putEvents",
-            "Parameters": {
-                "Entries": [
-                    {
-                        "Source": "review.analyzer",
-                        "DetailType": "Fake Review findings",
-                        "Detail": {
-                            "originalInput.$": "$$.Execution.Input",
-                            "analysis.$": "$.Body.output.message.content[0].text"
-                        },
-                        "EventBusName": "review-analyzer-bus"
-                    }
-                ]
-            },
+        "No action required": {
+            "Type": "Pass",
             "End": true
         },
-        "CallHTTPEndpoint": {
-            "QueryLanguage": "JSONata",
-            "Type": "Task",
-            "Resource": "arn:aws:states:::http:invoke",
-            "Arguments": {
-                "ApiEndpoint": "https://ecs.puthran.uk",
-                "Method": "GET",
-                "InvocationConfig": {
-                    "ConnectionArn": "arn:aws:events:us-east-1:963887453151:connection/Connection07624BCD-KStk3lOZeV6E/cf5b2c45-8114-464a-96d5-432a01e2f949"
-                }
-            },
-            "Retry": [
-                {
-                    "ErrorEquals": [
-                        "States.ALL"
-                    ],
-                    "BackoffRate": 2,
-                    "IntervalSeconds": 1,
-                    "MaxAttempts": 3,
-                    "JitterStrategy": "FULL"
-                }
-            ],
+        "Process further": {
+            "Type": "Pass",
             "End": true
         }
     }

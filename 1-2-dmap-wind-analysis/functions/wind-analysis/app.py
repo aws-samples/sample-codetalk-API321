@@ -100,10 +100,17 @@ def reducer_handler(event: dict, context: dict):
                     high_by_month[month_str] = row
 
     _write_results_to_ddb(high_by_month)
-    _write_results_to_s3(high_by_month)
+    _write_results_to_s3(high_by_month, event["ResultWriterDetails"]["Key"])
 
-def _write_results_to_s3(high_by_month: Dict[str, Dict]):
+def _write_results_to_s3(high_by_month: Dict[str, Dict], key: str):
     output_bucket = os.environ["RESULTS_BUCKET_NAME"]
+    
+    parts = key.split('/')
+    key = '/'.join(parts[:2] + parts[3:])
+    
+    key=f"{key}/wind_speed_results.csv"
+    
+    print(key)
     
     # Convert to CSV format
     if not high_by_month:
@@ -120,7 +127,7 @@ def _write_results_to_s3(high_by_month: Dict[str, Dict]):
     
     S3_CLIENT.put_object(
         Bucket=output_bucket,
-        Key="results/wind_speed_results.csv",
+        Key=key,
         Body=csv_buffer.getvalue().encode("utf-8"),
         ContentType="text/csv"
     )

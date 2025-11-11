@@ -1,90 +1,114 @@
 {
-  "Comment": "Distributed map to find windspeed stats by month",
-  "StartAt": "DistributedMap",
-  "States": {
-    "DistributedMap": {
-      "Type": "Map",
-      "ItemReader": {
-        "Resource": "arn:aws:states:::s3:listObjectsV2",
-        "Parameters": {
-          "Bucket": "${InputBucket}"
-        }
-      },
-      "ItemProcessor": {
-        "ProcessorConfig": {
-          "Mode": "DISTRIBUTED",
-          "ExecutionType": "EXPRESS"
+    "Comment": "Distributed map to find windspeed stats by month",
+    "StartAt": "DistributedMap",
+    "States": {
+        "DistributedMap": {
+            "Type": "Map",
+            "ItemReader": {
+                "Resource": "arn:aws:states:::s3:listObjectsV2",
+                "Parameters": {
+                    "Bucket": "${InputBucket}"
+                }
+            },
+            "ItemProcessor": {
+                "ProcessorConfig": {
+                    "Mode": "DISTRIBUTED",
+                    "ExecutionType": "EXPRESS"
+                },
+                "States": {
+                    "Wait": {
+                        "Type": "Wait",
+                        "Seconds": 54000,
+                        "Next": "Lambda Invoke"
+                    },
+                    "Lambda Invoke": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::lambda:invoke",
+                        "OutputPath": "$.Payload",
+                        "Parameters": {
+                            "Payload.$": "$",
+                            "FunctionName": "${DistributedMapTestFunctionName}"
+                        },
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "Lambda.TooManyRequestsException",
+                                    "Lambda.ServiceException",
+                                    "Lambda.AWSLambdaException",
+                                    "Lambda.SdkClientException"
+                                ],
+                                "IntervalSeconds": 2,
+                                "MaxAttempts": 6,
+                                "BackoffRate": 2
+                            }
+                        ],
+                        "Next": "Convert to mph"
+                    },
+                    "Convert to mph": {
+                        "Type": "Task",
+                        "Resource": "arn:aws:states:::lambda:invoke",
+                        "OutputPath": "$.Payload",
+                        "Parameters": {
+                            "Payload.$": "$",
+                            "FunctionName": "${ConvertWindSpeedFunction}"
+                        },
+                        "Retry": [
+                            {
+                                "ErrorEquals": [
+                                    "Lambda.ServiceException",
+                                    "Lambda.AWSLambdaException",
+                                    "Lambda.SdkClientException",
+                                    "Lambda.TooManyRequestsException"
+                                ],
+                                "IntervalSeconds": 1,
+                                "MaxAttempts": 3,
+                                "BackoffRate": 2,
+                                "JitterStrategy": "FULL"
+                            }
+                        ],
+                        "End": true
+                    }
+                },
+                "StartAt": "Wait"
+            },
+            "Label": "DistributedMap",
+            "MaxConcurrency": 3000,
+            "ToleratedFailurePercentage": 5,
+            "ResultWriter": {
+                "Resource": "arn:aws:states:::s3:putObject",
+                "Parameters": {
+                    "Bucket": "${ResultsBucket}",
+                    "Prefix": "results"
+                }
+            },
+            "ItemBatcher": {
+                "BatchInput": {},
+                "MaxItemsPerBatch": 500
+            },
+            "Next": "Reducer"
         },
-        "States": {
-          "Wait": {
-            "Type": "Wait",
-            "Seconds": 54000,
-            "Next": "Lambda Invoke"
-          },
-          "Lambda Invoke": {
+        "Reducer": {
             "Type": "Task",
             "Resource": "arn:aws:states:::lambda:invoke",
             "OutputPath": "$.Payload",
             "Parameters": {
-              "Payload.$": "$",
-              "FunctionName": "${DistributedMapTestFunctionName}"
+                "Payload.$": "$",
+                "FunctionName": "${ReducerFunctionName}"
             },
             "Retry": [
-              {
-                "ErrorEquals": [
-                  "Lambda.TooManyRequestsException",
-                  "Lambda.ServiceException",
-                  "Lambda.AWSLambdaException",
-                  "Lambda.SdkClientException"
-                ],
-                "IntervalSeconds": 2,
-                "MaxAttempts": 6,
-                "BackoffRate": 2
-              }
+                {
+                    "ErrorEquals": [
+                        "Lambda.TooManyRequestsException",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
             ],
             "End": true
-          }
-        },
-        "StartAt": "Wait"
-      },
-      "Label": "DistributedMap",
-      "MaxConcurrency": 3000,
-      "ToleratedFailurePercentage": 5,
-      "ResultWriter": {
-        "Resource": "arn:aws:states:::s3:putObject",
-        "Parameters": {
-          "Bucket": "${ResultsBucket}",
-          "Prefix": "results"
         }
-      },
-      "ItemBatcher": {
-        "BatchInput": {},
-        "MaxItemsPerBatch": 500
-      },
-      "Next": "Reducer"
-    },
-    "Reducer": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "OutputPath": "$.Payload",
-      "Parameters": {
-        "Payload.$": "$",
-        "FunctionName": "${ReducerFunctionName}"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.TooManyRequestsException",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
-        }
-      ],
-      "End": true
     }
-  }
 }
