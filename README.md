@@ -1,6 +1,6 @@
 # re:Invent Code Talk Demo - API321 Solving the Observability Mystery with AWS Step Functions
 
-This repository contains AWS Step Functions demos showcasing distributed map processing, state transition throttling and cross account invocations. Please note the sample provided here is for the purpose of demo and not for production use.
+This repository contains AWS Step Functions demos showcasing distributed map processing, state transition throttling and cross account invocations. Please note the sample provided here is for the purpose of demo and not for production use. Please review the [security best practices documentation](https://docs.aws.amazon.com/security/) for additional security considerations to be used in production environments.
 
 ## Architecture Overview
 
@@ -11,10 +11,10 @@ This repository contains AWS Step Functions demos showcasing distributed map pro
 **Architecture Components**:
 - **Data Source**: [NOAA Global Summary of the Day](https://registry.opendata.aws/noaa-gsod/) (GSOD) public dataset
 - **Processing Pipeline**: 
-  - S3 data copying from public NOAA bucket
-  - Distributed map processing with Lambda functions
+  - Amazon S3 data copying from public NOAA bucket
+  - Distributed map processing with AWS Lambda functions
   - Results aggregation and storage
-- **Storage**: S3 buckets for raw data and results, DynamoDB for final aggregated data
+- **Storage**: S3 buckets for raw data and results, Amazon DynamoDB for final aggregated data
 
 **Workflow**:
 1. `CopyNOAAS3DataStateMachine` - Copies NOAA data from public bucket to private S3 bucket
@@ -60,9 +60,9 @@ This repository contains AWS Step Functions demos showcasing distributed map pro
 **Workflow**:
 1. **Parent State Machine (Account A)**: Starts synchronous execution of child state machine in Account B
 2. **Child State Machine (Account B)**:
-   - **InvokeBedrockAPI**: Analyzes review text using Amazon Nova Micro model
+   - **InvokeBedrockAPI**: Analyzes review text using Amazon Nova Micro model (Amazon Bedrock)
    - **ClassifyReview**: Routes based on "fake" or "real" classification
-   - **PublishToEventBridge**: Sends fake review alerts to EventBridge
+   - **PublishToEventBridge**: Sends fake review alerts to Amazon EventBridge
    - **CallHTTPEndpoint**: Makes HTTP call for real reviews with retry logic
 
 **Key Features**:
@@ -77,7 +77,7 @@ This repository contains AWS Step Functions demos showcasing distributed map pro
 - AWS CLI configured with appropriate permissions
 - AWS SAM CLI installed
 - Python 3.13 runtime support
-- IAM permissions for Step Functions, Lambda, S3, DynamoDB, and CloudWatch
+- IAM permissions for Step Functions, Lambda, S3, DynamoDB, and Amazon CloudWatch
 
 ## Deployment Instructions
 
