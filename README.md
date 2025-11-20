@@ -61,16 +61,16 @@ This repository contains AWS Step Functions demos showcasing distributed map pro
 1. **Parent State Machine (Account A)**: Starts synchronous execution of child state machine in Account B
 2. **Child State Machine (Account B)**:
    - **InvokeBedrockAPI**: Analyzes review text using Amazon Nova Micro model (Amazon Bedrock)
-   - **ClassifyReview**: Routes based on "fake" or "real" classification
-   - **PublishToEventBridge**: Sends fake review alerts to Amazon EventBridge
-   - **CallHTTPEndpoint**: Makes HTTP call for real reviews with retry logic
+   - **ClassifyReview**: Routes based on "fake" or "real" classification from Bedrock response
+   - **Process Fake**: Fake reviews are then processed accordingly
+   - **Process further**: Real reviews are then processed accordingly
 
 **Key Features**:
-- Cross-account execution with secure role assumption
-- AI-powered review classification
+- Cross-account execution with secure role assumption and external ID validation
+- AI-powered review classification using Amazon Bedrock
 - Conditional routing based on AI analysis
-- EventBridge integration for alerting
-- HTTP endpoint integration with retry patterns
+- JSONata query language for input transformation
+- Parameterized account numbers for flexible deployment
 
 ## Prerequisites
 
@@ -113,10 +113,10 @@ sam deploy --guided
 cd 4-nested-xa/
 
 # Deploy to Account B first
-# Deploy to Account A (requires Account B state machine ARN)
-sam deploy -t account-a.yaml --guided
-
 sam deploy -t account-b.yaml --guided
+
+# Deploy to Account A (requires Account B state machine ARN and role)
+sam deploy -t account-a.yaml --guided
 ```
 
 ## Execution Instructions
@@ -170,30 +170,11 @@ aws stepfunctions start-execution \
   --input '{"asin": "232423","helpful": [0,0],"overall": 5,"reviewText": "I enjoy vintage books and movies so I enjoyed reading this book. The plot was unusual. Don't think killing someone in self-defense but leaving the scene and the body without notifying the police or hitting someone in the jaw to knock them out would wash today. Still it was a good read for me.","reviewTime": "05 5, 2014","reviewerID": "A1F6404F1VG29J","reviewerName": "Avidreader", "summary": "Nice vintage story","unixReviewTime": 1399248000}'
 ```
 
-```
-{
-  "asin": "213123",
-  "helpful": [
-    0,
-    0
-  ],
-  "overall": 5,
-  "reviewText": "I enjoy vintage books and movies so I enjoyed reading this book. The plot was unusual. Don't think killing someone in self-defense but leaving the scene and the body without notifying the police or hitting someone in the jaw to knock them out would wash today. Still it was a good read for me.",
-  "reviewTime": "05 5, 2014",
-  "reviewerID": "A1F6404F1VG29J",
-  "reviewerName": "Avidreader",
-  "summary": "Nice vintage story",
-  "unixReviewTime": 1399248000
-}
-```
-
-
 **Expected Behavior**:
 - Parent state machine in Account A calls child state machine in Account B
-- Bedrock analyzes review text and classifies as fake or real
-- Fake reviews trigger EventBridge notifications
-- Real reviews make HTTP endpoint calls
-- Cross-account execution completes synchronously
+- Child state machine uses Amazon Bedrock Nova Micro model to analyze review text
+- Bedrock classifies review as "fake" or "real" based on content analysis
+- Cross-account execution completes synchronously with classification result
 
 
 ## Cleanup
