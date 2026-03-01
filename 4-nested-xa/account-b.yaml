@@ -10,11 +10,9 @@ Parameters:
   AccountANumber:
     Type: String
     Description: Account A number for cross-account access
-    Default: "372707623367"
   AccountBNumber:
     Type: String
     Description: Account B number for state machine resources
-    Default: "963887453151"
 
 Resources:
   ChildStateMachineRole:
@@ -23,13 +21,16 @@ Resources:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Effect: Allow
+          - Sid: TrustPolicy1
+            Effect: Allow
             Principal:
-              AWS: !Sub "arn:aws:iam::${AccountANumber}:role/sfn-parent-role"
+              Service: states.amazonaws.com
             Action: "sts:AssumeRole"
             Condition:
               StringEquals:
-                "sts:ExternalId": !Sub "arn:aws:states:us-east-1:${AccountANumber}:stateMachine:${DemoNumber}-parent-statemachine"
+                "aws:SourceAccount": !Ref AccountBNumber
+              ArnLike:
+                "aws:SourceArn": !Sub "arn:aws:states:${AWS::Region}:${AccountBNumber}:stateMachine:*"
       Policies:
         - PolicyName: StepFunctionsExecutionPolicy
           PolicyDocument:
@@ -39,7 +40,13 @@ Resources:
                 Action:
                   - "states:StartExecution"
                 Resource:
-                  - !Sub "arn:aws:states:us-east-1:${AccountBNumber}:stateMachine:nested-process-review*"
+                  - !Sub "arn:aws:states:${AWS::Region}:${AccountBNumber}:stateMachine:nested-process-review*"
+              - Effect: Allow
+                Sid: InvokeModel1
+                Action:
+                  - "bedrock:InvokeModel"
+                Resource:
+                  - !Sub "arn:aws:bedrock:${AWS::Region}::foundation-model/amazon.nova-micro-v1:0"
 
   ChildStateMachine:
     Type: AWS::Serverless::StateMachine

@@ -54,7 +54,7 @@ This repository contains AWS Step Functions demos showcasing distributed map pro
 **Architecture Components**:
 - **Account A**: Parent state machine that initiates cross-account execution
 - **Account B**: Child state machine that processes review data using Amazon Bedrock
-- **Cross-Account IAM**: Role-based access with external ID validation
+- **Cross-Account IAM**: Step Functions service principal with source account validation
 - **AI Integration**: Amazon Nova Micro model for review classification
 
 **Workflow**:
@@ -66,7 +66,7 @@ This repository contains AWS Step Functions demos showcasing distributed map pro
    - **Process further**: Real reviews are then processed accordingly
 
 **Key Features**:
-- Cross-account execution with secure role assumption and external ID validation
+- Cross-account execution with Step Functions service principal
 - AI-powered review classification using Amazon Bedrock
 - Conditional routing based on AI analysis
 - JSONata query language for input transformation
@@ -112,11 +112,11 @@ sam deploy --guided
 ```bash
 cd 4-nested-xa/
 
-# Deploy to Account B first
-sam deploy -t account-b.yaml --guided
+# Deploy to Account B first (provide Account A number)
+sam deploy -t account-b.yaml --guided --parameter-overrides AccountANumber=ACCOUNT-A-NUMBER AccountBNumber=ACCOUNT-B-NUMBER
 
-# Deploy to Account A (requires Account B state machine ARN and role)
-sam deploy -t account-a.yaml --guided
+# Deploy to Account A (requires Account B state machine ARN and role ARN)
+sam deploy -t account-a.yaml --guided --parameter-overrides ChildStateMachineArn=CHILD-STATE-MACHINE-ARN AccountBRole=ACCOUNT-B-ROLE-ARN
 ```
 
 ## Execution Instructions
